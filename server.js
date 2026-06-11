@@ -2,7 +2,7 @@ const db = require("./database");
 const express = require("express");
 const QRCode = require("qrcode");
 const session = require("express-session");
-
+const bcrypt = require("bcrypt");
 const app = express();
 
 app.set("view engine", "ejs");
@@ -17,6 +17,41 @@ app.use(
   })
 );
 
+app.get("/register", (req, res) => {
+    res.render("register");
+});
+
+app.post("/register", async (req, res) => {
+
+    const { email, password } = req.body;
+
+    const hashedPassword =
+        await bcrypt.hash(password, 10);
+
+    db.run(
+        `
+       INSERT INTO users(
+    email,
+    password,
+    created_at
+)
+VALUES(
+    ?, ?, date('now')
+)
+        `,
+        [email, hashedPassword],
+        (err) => {
+
+            if (err) {
+                return res.send("Пользователь уже существует");
+            }
+
+            res.redirect("/");
+        }
+    );
+
+});
+
 app.get("/", (req, res) => {
   res.redirect("/login");
 });
@@ -26,20 +61,39 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  const { email, password } = req.body;
 
-  if (
-    email === "admin@test.com" &&
-    password === "123456"
-  ) {
-    req.session.user = {
-      email,
-    };
+    const { email, password } = req.body;
 
-    return res.redirect("/dashboard");
-  }
+    db.get(
+        "SELECT * FROM users WHERE email = ?",
+        [email],
 
-  res.send("Неверный логин или пароль");
+        async (err, user) => {
+
+            if (!user) {
+                return res.send("Пользователь не найден");
+            }
+
+            const match =
+                await bcrypt.compare(
+                    password,
+                    user.password
+                );
+
+            if (!match) {
+                return res.send("Неверный пароль");
+            }
+
+           req.session.user = {
+    id: user.id,
+    email: user.email,
+    is_admin: user.is_admin
+};
+
+            res.redirect("/dashboard");
+        }
+    );
+
 });
 
 app.get("/dashboard", (req, res) => {
@@ -48,9 +102,9 @@ app.get("/dashboard", (req, res) => {
         return res.redirect("/login");
     }
 
-    db.all(
-        "SELECT * FROM qr_codes",
-        [],
+   db.all(
+    "SELECT * FROM qr_codes WHERE user_id = ?",
+    [req.session.user.id],
         (err, rows) => {
 
             let totalClicks = 0;
@@ -82,18 +136,36 @@ app.post("/create", async (req, res) => {
 
     db.run(
         `
-        INSERT INTO qr_codes(title,url)
-        VALUES(?,?)
+       INSERT INTO qr_codes(
+    title,
+    url,
+    user_id
+)
+VALUES(?, ?, ?)
         `,
-        [title,url]
-    );
+       [
+    title,
+    url,
+    req.session.user.id
+],
 
-    const qrSvg = await QRCode.toString(url,{
-        type:"svg",
-        margin:4
-    });
+        async function(err) {
 
-    res.send(`
+            if (err) {
+                return res.send("Ошибка создания QR");
+            }
+
+            const id = this.lastID;
+
+            const shortUrl =
+                `https://qr-system-dxto.onrender.com/r/${id}`;
+
+            const qrSvg = await QRCode.toString(shortUrl, {
+                type: "svg",
+                margin: 4
+            });
+
+            res.send(`
 <!DOCTYPE html>
 <html>
 
@@ -122,7 +194,11 @@ svg{
 
 ${qrSvg}
 
-<p>${url}</p>
+<p>Короткая ссылка:</p>
+
+<p>
+${shortUrl}
+</p>
 
 <br>
 
@@ -131,9 +207,11 @@ ${qrSvg}
 </a>
 
 </body>
+
 </html>
 `);
-
+        }
+    );
 });
 
 app.get("/q/:id", (req, res) => {
@@ -165,6 +243,50 @@ app.get("/q/:id", (req, res) => {
 
 });
 
+app.get("/edit/:id", (req, res) => {
+
+    const id = req.params.id;
+
+    db.get(
+        "SELECT * FROM qr_codes WHERE id = ?",
+        [id],
+        (err, qr) => {
+
+            if (!qr) {
+                return res.send("QR не найден");
+            }
+
+            res.render("edit", {
+                qr
+            });
+
+        }
+    );
+
+});
+
+app.post("/edit/:id", (req, res) => {
+
+    const id = req.params.id;
+
+    const { title, url } = req.body;
+
+    db.run(
+        `
+        UPDATE qr_codes
+        SET title = ?, url = ?
+        WHERE id = ?
+        `,
+        [title, url, id],
+        () => {
+
+            res.redirect("/dashboard");
+
+        }
+    );
+
+});
+
 app.get("/delete/:id", (req, res) => {
 
     const id = req.params.id;
@@ -181,10 +303,26 @@ app.get("/delete/:id", (req, res) => {
 
 app.get("/stats", (req, res) => {
 
+const period = req.query.period || "7";
+
+    if (!req.session.user) {
+        return res.redirect("/login");
+    }
+
     db.all(
-        "SELECT * FROM qr_codes ORDER BY clicks DESC",
-        [],
+        `
+        SELECT *
+        FROM qr_codes
+        WHERE user_id = ?
+        ORDER BY clicks DESC
+        `,
+        [req.session.user.id],
+
         (err, rows) => {
+
+            if (err) {
+                return res.send("Ошибка статистики");
+            }
 
             let totalClicks = 0;
 
@@ -192,10 +330,45 @@ app.get("/stats", (req, res) => {
                 totalClicks += qr.clicks;
             });
 
-            res.render("stats", {
-                qrCodes: rows,
-                totalClicks
-            });
+            db.all(
+    `
+    SELECT
+        visit_date,
+        COUNT(*) as clicks
+    FROM visits
+    WHERE visit_date >= date('now', '-${period} days')
+    GROUP BY visit_date
+    ORDER BY visit_date
+    `,
+    [],
+
+                (err, visits) => {
+
+                    db.all(
+                        `
+                        SELECT
+                            source,
+                            COUNT(*) as total
+                        FROM visits
+                        GROUP BY source
+                        `,
+                        [],
+
+                        (err, sources) => {
+
+                            res.render("stats", {
+                            qrCodes: rows,
+                            totalClicks,
+                            visits,
+                            sources,
+                            period
+                         });
+
+                        }
+                    );
+
+                }
+            );
 
         }
     );
@@ -209,6 +382,279 @@ app.get("/logout", (req, res) => {
         res.redirect("/login");
 
     });
+
+});
+
+app.get("/r/:id", (req, res) => {
+
+    const id = req.params.id;
+
+    db.get(
+        "SELECT * FROM qr_codes WHERE id = ?",
+        [id],
+        (err, row) => {
+
+            if (err || !row) {
+                return res.send("QR код не найден");
+            }
+
+            db.run(
+                "UPDATE qr_codes SET clicks = clicks + 1 WHERE id = ?",
+                [id]
+            );
+const referer = req.get("Referer") || "";
+
+let source = "direct";
+
+if (referer.includes("google")) {
+    source = "search";
+}
+else if (
+    referer.includes("facebook") ||
+    referer.includes("instagram") ||
+    referer.includes("twitter")
+) {
+    source = "social";
+}
+
+db.run(
+    `
+    INSERT INTO visits(
+        qr_id,
+        visit_date,
+        source
+    )
+    VALUES(
+        ?,
+        date('now'),
+        ?
+    )
+    `,
+    [id, source]
+);
+            res.redirect(row.url);
+        }
+    );
+
+});
+
+app.get("/download/png/:id", (req, res) => {
+
+    const id = req.params.id;
+
+    db.get(
+        "SELECT * FROM qr_codes WHERE id = ?",
+        [id],
+        async (err, qr) => {
+
+            if (!qr) {
+                return res.send("QR не найден");
+            }
+
+            const shortUrl =
+                `https://qr-system-dxto.onrender.com/r/${id}`;
+
+            const pngBuffer =
+                await QRCode.toBuffer(shortUrl);
+
+            res.setHeader(
+                "Content-Type",
+                "image/png"
+            );
+
+            res.setHeader(
+                "Content-Disposition",
+                `attachment; filename=qr-${id}.png`
+            );
+
+            res.send(pngBuffer);
+        }
+    );
+});
+
+app.get("/download/svg/:id", (req, res) => {
+
+    const id = req.params.id;
+
+    db.get(
+        "SELECT * FROM qr_codes WHERE id = ?",
+        [id],
+        async (err, qr) => {
+
+            if (!qr) {
+                return res.send("QR не найден");
+            }
+
+            const shortUrl =
+                `https://qr-system-dxto.onrender.com/r/${id}`;
+
+            const svg =
+                await QRCode.toString(
+                    shortUrl,
+                    {
+                        type: "svg"
+                    }
+                );
+
+            res.setHeader(
+                "Content-Type",
+                "image/svg+xml"
+            );
+
+            res.setHeader(
+                "Content-Disposition",
+                `attachment; filename=qr-${id}.svg`
+            );
+
+            res.send(svg);
+        }
+    );
+});
+
+
+app.get("/admin", (req, res) => {
+
+    if (!req.session.user) {
+        return res.redirect("/login");
+    }
+
+    if (req.session.user.is_admin !== 1) {
+        return res.send("Доступ запрещён");
+    }
+
+    db.all(
+        "SELECT * FROM users",
+        [],
+        (err, users) => {
+
+            db.all(
+                "SELECT * FROM qr_codes",
+                [],
+                (err, qrCodes) => {
+
+                    db.get(
+                        "SELECT COUNT(*) as total FROM visits",
+                        [],
+                        (err, visits) => {
+
+                            res.render("admin", {
+                                users,
+                                qrCodes,
+                                totalUsers: users.length,
+                                totalQr: qrCodes.length,
+                                totalVisits: visits.total
+                            });
+
+                        }
+                    );
+
+                }
+            );
+
+        }
+    );
+
+});
+
+app.get("/admin/block/:id", (req, res) => {
+
+    db.run(
+        `
+        UPDATE users
+        SET status =
+        CASE
+            WHEN status='Активен'
+            THEN 'Заблокирован'
+            ELSE 'Активен'
+        END
+        WHERE id = ?
+        `,
+        [req.params.id],
+        () => {
+            res.redirect("/admin");
+        }
+    );
+
+});
+
+app.get("/admin/delete-user/:id", (req, res) => {
+
+    db.run(
+        "DELETE FROM users WHERE id = ?",
+        [req.params.id],
+        () => {
+            res.redirect("/admin");
+        }
+    );
+
+});
+
+app.get("/admin/edit-user/:id", (req, res) => {
+
+    db.get(
+        "SELECT * FROM users WHERE id = ?",
+        [req.params.id],
+        (err, user) => {
+
+            res.render("edit-user", {
+                user
+            });
+
+        }
+    );
+
+});
+
+app.post("/admin/edit-user/:id", (req, res) => {
+
+    const { email } = req.body;
+
+    db.run(
+        `
+        UPDATE users
+        SET email = ?
+        WHERE id = ?
+        `,
+        [email, req.params.id],
+        () => {
+
+            res.redirect("/admin");
+
+        }
+    );
+
+});
+
+app.get("/admin/create-user", (req, res) => {
+
+    res.render("create-user");
+
+});
+
+app.post("/admin/create-user", async (req, res) => {
+
+    const { email, password } = req.body;
+
+    const hash =
+        await bcrypt.hash(password, 10);
+
+    db.run(
+        `
+        INSERT INTO users(
+            email,
+            password,
+            status,
+            created_at
+        )
+        VALUES(?, ?, 'Активен', datetime('now'))
+        `,
+        [email, hash],
+        () => {
+
+            res.redirect("/admin");
+
+        }
+    );
 
 });
 

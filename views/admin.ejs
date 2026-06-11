@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Админ панель</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-4">
+
+<h1>Админ панель</h1>
+
+<div class="text-end mb-3">
+
+<a
+href="/admin/create-user"
+class="btn btn-primary">
++ Добавить пользователя
+</a>
+
+</div>
+
+<div class="row mb-4">
+
+<div class="col-md-4">
+<div class="card">
+<div class="card-body">
+<h5>Пользователей</h5>
+<h2><%= totalUsers %></h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card">
+<div class="card-body">
+<h5>QR-кодов</h5>
+<h2><%= totalQr %></h2>
+</div>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card">
+<div class="card-body">
+<h5>Переходов</h5>
+<h2><%= totalVisits %></h2>
+</div>
+</div>
+</div>
+
+</div>
+
+<h3>Пользователи</h3>
+
+<table class="table table-bordered">
+
+<tr>
+<th>ID</th>
+<th>Email</th>
+<th>Статус</th>
+<th>Создан</th>
+<th>Действия</th>
+</tr>
+
+<% users.forEach(user => { %>
+
+<tr>
+<td><%= user.id %></td>
+<td><%= user.email %></td>
+<td><%= user.status %></td>
+
+<td>
+    <%= user.created_at %>
+</td>
+
+<td>
+
+<a
+href="/admin/edit-user/<%= user.id %>"
+class="btn btn-warning btn-sm">
+Изменить
+</a>
+
+<a
+href="/admin/block/<%= user.id %>"
+class="btn btn-secondary btn-sm">
+Блок
+</a>
+
+<a
+href="/admin/delete-user/<%= user.id %>"
+class="btn btn-danger btn-sm">
+Удалить
+</a>
+
+</td>
+</tr>
+
+<% }) %>
+
+</table>
+
+
+<a href="/dashboard" class="btn btn-secondary">
+Назад
+</a>
+
+</div>
+
+</body>
+</html>

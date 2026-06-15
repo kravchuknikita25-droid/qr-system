@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ru">
 <head>
 
@@ -9,26 +10,42 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
 <style>
 
 body{
     background:#f5f7fb;
+    font-family:Arial,sans-serif;
 }
 
 .stat-card{
     border:none;
-    border-radius:15px;
-    box-shadow:0 4px 15px rgba(0,0,0,.08);
+    border-radius:20px;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
 }
 
-.chart-box{
-    height:320px;
+.chart-card{
+    border:none;
+    border-radius:20px;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
 }
 
-.pie-box{
-    width:260px;
-    height:260px;
+.table-card{
+    border:none;
+    border-radius:20px;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
+}
+
+.small-pie{
+    width:280px;
+    height:280px;
     margin:auto;
+}
+
+.page-title{
+    font-weight:700;
 }
 
 </style>
@@ -37,166 +54,193 @@ body{
 
 <body>
 
-<div class="container mt-4">
+<div class="container-fluid p-4">
 
-    <h1 class="mb-4">
-        Аналитика QR-кодов
-    </h1>
 
-    <!-- Карточки -->
-    <div class="row mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
 
-        <div class="col-md-4">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <h6>Всего переходов</h6>
-                    <h2><%= totalClicks %></h2>
-                </div>
-            </div>
-        </div>
+    <div>
 
-        <div class="col-md-4">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <h6>QR-кодов</h6>
-                    <h2><%= qrCodes.length %></h2>
-                </div>
-            </div>
-        </div>
+        <h2 class="page-title">
+            Аналитика QR-кодов
+        </h2>
 
-        <div class="col-md-4">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <h6>Активных ссылок</h6>
-                    <h2><%= qrCodes.length %></h2>
-                </div>
-            </div>
-        </div>
+        <small class="text-muted">
+            Подробная статистика переходов
+        </small>
 
     </div>
 
-    <!-- ЛИНИЯ (ПЕРЕХОДЫ ПО ДНЯМ) -->
-    <div class="card mb-4">
+    <a href="/dashboard"
+       class="btn btn-secondary">
 
-        <div class="card-body">
+        <i class="bi bi-arrow-left"></i>
 
-            <div class="d-flex justify-content-between align-items-center mb-3">
+        Dashboard
 
-    <h4>
-        Переходы по дням
-    </h4>
-
-    <form method="GET" action="/stats">
-
-        <div class="d-flex align-items-center">
-
-            <span class="me-2">
-                Период
-            </span>
-
-            <select
-                name="period"
-                class="form-select"
-                onchange="this.form.submit()"
-            >
-
-                <option
-                    value="1"
-                    <%= period=="1" ? "selected" : "" %>>
-                    1 день
-                </option>
-
-                <option
-                    value="7"
-                    <%= period=="7" ? "selected" : "" %>>
-                    7 дней
-                </option>
-
-                <option
-                    value="30"
-                    <%= period=="30" ? "selected" : "" %>>
-                    Месяц
-                </option>
-
-            </select>
-
-        </div>
-
-    </form>
+    </a>
 
 </div>
 
-            <div class="chart-box">
-                <canvas id="lineChart"></canvas>
+<div class="row mb-4">
+
+    <div class="col-md-4">
+
+        <div class="card stat-card">
+
+            <div class="card-body">
+
+                <h6>Всего переходов</h6>
+
+                <h2>
+                    <%= totalClicks %>
+                </h2>
+
             </div>
 
         </div>
 
     </div>
 
-    <!-- КРУГОВАЯ ДИАГРАММА -->
-    <div class="card mb-4">
+    <div class="col-md-4">
 
-        <div class="card-body">
+        <div class="card stat-card">
 
-            <h4 class="text-center">Источники переходов</h4>
+            <div class="card-body">
 
-            <div class="pie-box">
-                <canvas id="sourceChart"></canvas>
+                <h6>QR-кодов</h6>
+
+                <h2>
+                    <%= qrCodes.length %>
+                </h2>
+
             </div>
 
         </div>
 
     </div>
 
-    <!-- ТАБЛИЦА -->
-    <div class="card">
+    <div class="col-md-4">
 
-        <div class="card-body">
+        <div class="card stat-card">
 
-            <h4>QR-коды</h4>
+            <div class="card-body">
 
-            <table class="table table-bordered">
+                <h6>Активных ссылок</h6>
 
-                <thead>
-                    <tr>
-                        <th>Название</th>
-                        <th>Ссылка</th>
-                        <th>Клики</th>
-                    </tr>
-                </thead>
+                <h2>
+                    <%= qrCodes.length %>
+                </h2>
 
-                <tbody>
-
-                <% qrCodes.forEach(qr => { %>
-
-                    <tr>
-                        <td><%= qr.title %></td>
-                        <td><%= qr.url %></td>
-                        <td><%= qr.clicks %></td>
-                    </tr>
-
-                <% }) %>
-
-                </tbody>
-
-            </table>
+            </div>
 
         </div>
 
     </div>
 
-    <br>
+</div>
 
-    <a href="/dashboard" class="btn btn-secondary">
-        Назад
-    </a>
+<div class="card chart-card mb-4">
+
+    <div class="card-body">
+
+        <h4 class="mb-3">
+
+            <i class="bi bi-graph-up"></i>
+
+            Переходы по дням
+
+        </h4>
+
+        <canvas id="lineChart"></canvas>
+
+    </div>
+
+</div>
+
+<div class="card chart-card mb-4">
+
+    <div class="card-body text-center">
+
+        <h4 class="mb-4">
+
+            <i class="bi bi-pie-chart"></i>
+
+            Источники переходов
+
+        </h4>
+
+        <div class="small-pie">
+
+            <canvas id="sourceChart"></canvas>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="card table-card">
+
+    <div class="card-body">
+
+        <h4 class="mb-3">
+
+            <i class="bi bi-table"></i>
+
+            QR-коды
+
+        </h4>
+
+        <table class="table table-hover">
+
+            <thead>
+
+            <tr>
+
+                <th>Название</th>
+                <th>Ссылка</th>
+                <th>Клики</th>
+
+            </tr>
+
+            </thead>
+
+            <tbody>
+
+            <% qrCodes.forEach(qr => { %>
+
+            <tr>
+
+                <td>
+                    <%= qr.title %>
+                </td>
+
+                <td>
+                    <%= qr.url %>
+                </td>
+
+                <td>
+                    <%= qr.clicks %>
+                </td>
+
+            </tr>
+
+            <% }) %>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- ЛИНИЯ -->
 <script>
 
 const labels = [
@@ -218,40 +262,56 @@ document.getElementById("lineChart"),
 
     data:{
         labels:labels,
+
         datasets:[{
+
             label:"Переходы",
+
             data:data,
-            borderWidth:3,
+
             tension:0.4,
-            fill:false,
-            pointRadius:4
+
+            fill:false
+
         }]
     },
 
     options:{
+
         responsive:true,
-        maintainAspectRatio:false,
+
+        plugins:{
+            legend:{
+                display:true
+            }
+        },
+
         scales:{
-            y:{ beginAtZero:true }
+
+            y:{
+                beginAtZero:true
+            }
+
         }
+
     }
+
 }
 );
 
 </script>
 
-<!-- PIE -->
 <script>
 
 const sourceLabels = [
-<% sources.forEach(s => { %>
-"<%= s.source %>",
+<% sources.forEach(source => { %>
+"<%= source.source %>",
 <% }) %>
 ];
 
 const sourceData = [
-<% sources.forEach(s => { %>
-<%= s.total %>,
+<% sources.forEach(source => { %>
+<%= source.total %>,
 <% }) %>
 ];
 
@@ -262,14 +322,16 @@ document.getElementById("sourceChart"),
 
     data:{
         labels:sourceLabels,
+
         datasets:[{
+
             data:sourceData
+
         }]
     },
 
     options:{
-        responsive:true,
-        maintainAspectRatio:false
+        responsive:true
     }
 }
 );

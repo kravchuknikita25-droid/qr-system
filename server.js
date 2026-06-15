@@ -658,6 +658,94 @@ app.post("/admin/create-user", async (req, res) => {
 
 });
 
+
+app.get("/profile", (req, res) => {
+
+if (!req.session.user) {
+    return res.redirect("/login");
+}
+
+db.get(
+    `
+    SELECT
+        COUNT(*) as totalQr,
+        COALESCE(SUM(clicks),0) as totalClicks
+    FROM qr_codes
+    WHERE user_id = ?
+    `,
+    [req.session.user.id],
+    (err, stats) => {
+
+        res.render("profile", {
+            user: req.session.user,
+            stats
+        });
+
+    }
+);
+
+});
+
+app.get("/settings", (req, res) => {
+
+if (!req.session.user) {
+    return res.redirect("/login");
+}
+
+res.render("settings", {
+    user: req.session.user
+});
+
+
+});
+
+app.post("/settings/email", (req, res) => {
+
+const { email } = req.body;
+
+db.run(
+    `
+    UPDATE users
+    SET email = ?
+    WHERE id = ?
+    `,
+    [email, req.session.user.id],
+    () => {
+
+        req.session.user.email = email;
+
+        res.redirect("/settings");
+
+    }
+);
+
+});
+
+app.post("/settings/password", async (req, res) => {
+    
+const { password } = req.body;
+
+const hash =
+    await bcrypt.hash(password, 10);
+
+db.run(
+    `
+    UPDATE users
+    SET password = ?
+    WHERE id = ?
+    `,
+    [hash, req.session.user.id],
+    () => {
+
+        res.redirect("/settings");
+
+    }
+);
+
+
+});
+
+
 app.listen(3000, () => {
   console.log("Сервер запущен");
 });

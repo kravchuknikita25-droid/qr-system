@@ -165,23 +165,38 @@ VALUES(?, ?, ?)
                 margin: 4
             });
 
-            res.send(`
+           res.send(`
+
 <!DOCTYPE html>
-<html>
+
+<html lang="ru">
 
 <head>
+
+<meta charset="UTF-8">
+
+<title>QR создан</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
 
 body{
-    text-align:center;
+    background:#f5f7fb;
     font-family:Arial;
-    margin-top:40px;
+}
+
+.card{
+    max-width:700px;
+    margin:50px auto;
+    border:none;
+    border-radius:20px;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
 }
 
 svg{
-    width:300px;
-    height:300px;
+    width:280px;
+    height:280px;
 }
 
 </style>
@@ -190,26 +205,87 @@ svg{
 
 <body>
 
-<h1>${title}</h1>
+<div class="card">
 
-${qrSvg}
 
-<p>Короткая ссылка:</p>
+<div class="card-body text-center">
 
-<p>
-${shortUrl}
-</p>
+    <h2 class="mb-4">
+        QR успешно создан
+    </h2>
 
-<br>
+    ${qrSvg}
 
-<a href="/dashboard">
-Назад в Dashboard
-</a>
+    <h5 class="mt-4">
+        Короткая ссылка
+    </h5>
+
+    <input
+        id="shortUrl"
+        class="form-control text-center"
+        value="${shortUrl}"
+        readonly
+    >
+
+    <br>
+
+    <button
+        class="btn btn-primary"
+        onclick="copyLink()"
+    >
+        Скопировать ссылку
+    </button>
+
+    <a
+        href="/download/png/${id}"
+        class="btn btn-success"
+    >
+        Скачать PNG
+    </a>
+
+    <a
+        href="/download/svg/${id}"
+        class="btn btn-info"
+    >
+        Скачать SVG
+    </a>
+
+    <br><br>
+
+    <a
+        href="/dashboard"
+        class="btn btn-secondary"
+    >
+        Назад в Dashboard
+    </a>
+
+</div>
+
+
+</div>
+
+<script>
+
+function copyLink(){
+
+    const input =
+        document.getElementById("shortUrl");
+
+    navigator.clipboard.writeText(
+        input.value
+    );
+
+    alert("Ссылка скопирована");
+
+}
+
+</script>
 
 </body>
 
 </html>
 `);
+
         }
     );
 });
